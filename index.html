@@ -116,6 +116,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .di{border:.5px solid var(--border);border-radius:var(--r);padding:6px 7px;font-size:12px;width:100%;background:#fff;color:var(--text)}
 .di.alert{border-color:var(--danger);background:var(--danger-bg)}
 .di.di-ok{border-color:var(--success);background:var(--success-bg)}
+.field-locked{background:var(--bg2)!important;color:var(--text2)!important;border-color:var(--border)!important;cursor:not-allowed!important;}
+.lock-icon{font-size:10px;color:var(--text3);margin-left:4px;}
 .del-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:15px;padding:2px}
 .add-btn{border:.5px dashed var(--border2);background:none;border-radius:var(--r);padding:7px;font-size:12px;color:var(--text2);cursor:pointer;width:100%;margin-top:4px}
 .add-btn:hover{background:var(--bg2)}
@@ -787,30 +789,55 @@ function connectDrive(){const id=document.getElementById('sheet-id-input').value
 function updateDriveDot(){document.getElementById('drive-dot').className='drive-dot ok';}
 const SCRIPT_URL='https://script.google.com/macros/s/AKfycbw2ntDlQDovFkdazBtZ6i4WXVl9tsIyQWat8H0v4PdNj9-hxNLJsmaGgCAhloJuDhy5KA/exec';
 
+// Track which keys are locked (already saved to sheet)
+let lockedKeys = JSON.parse(localStorage.getItem('dv_locked')||'{}');
+
+function lockKey(wk, key){
+  if(!lockedKeys[wk]) lockedKeys[wk]={};
+  lockedKeys[wk][key]=true;
+  localStorage.setItem('dv_locked',JSON.stringify(lockedKeys));
+}
+
+function isLocked(key){
+  const wk=weekKey();
+  return lockedKeys[wk]&&lockedKeys[wk][key];
+}
+
 async function loadFromSheet(wk){
+  toast('Loading from Sheet...');
   try {
-    const url=SCRIPT_URL+'?action=load&week='+encodeURIComponent(wk);
-    const resp=await fetch(url);
+    const resp=await fetch(SCRIPT_URL,{
+      method:'POST',
+      body:JSON.stringify({action:'load', week:wk})
+    });
     const result=await resp.json();
     if(result.status==='ok'&&result.data&&Object.keys(result.data).length>0){
       data[wk]=result.data;
       localStorage.setItem('dv_data',JSON.stringify(data));
-      toast('✓ Data loaded from Google Sheet');
+      // Lock all loaded keys
+      if(!lockedKeys[wk]) lockedKeys[wk]={};
+      Object.keys(result.data).forEach(k=>{ lockedKeys[wk][k]=true; });
+      localStorage.setItem('dv_locked',JSON.stringify(lockedKeys));
+      toast('✓ Data loaded — '+Object.keys(result.data).length+' fields');
       render();
       return true;
+    } else {
+      toast('No saved data for '+wk);
     }
-  } catch(e){}
+  } catch(e){
+    toast('Could not connect to Google Sheet');
+  }
   return false;
 }
 
 async function saveData(){
   const wk=weekKey();
-  const localEntries=Object.keys(data[wk]||{}).filter(k=>!k.startsWith('_')).length;
-  if(localEntries===0){
-    toast('⚠ No data to save — fill in some fields first');
+  // Find new (unlocked) entries
+  const newEntries=Object.keys(data[wk]||{}).filter(k=>!k.startsWith('_')&&!isLocked(k)&&data[wk][k]!==''&&data[wk][k]!==false);
+  if(newEntries.length===0){
+    toast('⚠ No new data to save');
     return;
   }
-  if(!confirm('Save week '+wk+' to Google Sheet?\nThis will overwrite existing sheet data.')){return;}
   localStorage.setItem('dv_data',JSON.stringify(data));
   const btn=document.getElementById('save-btn');
   btn.textContent='Saving…';btn.disabled=true;
@@ -819,8 +846,13 @@ async function saveData(){
     const resp=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
     const result=await resp.json();
     if(result.status==='ok'){
+      // Lock all saved keys
+      if(!lockedKeys[wk]) lockedKeys[wk]={};
+      Object.keys(data[wk]||{}).forEach(k=>{ lockedKeys[wk][k]=true; });
+      localStorage.setItem('dv_locked',JSON.stringify(lockedKeys));
       document.getElementById('drive-dot').className='drive-dot ok';
-      toast('✓ Saved to Google Sheet — '+wk);
+      toast('✓ Saved '+newEntries.length+' new fields — '+wk);
+      render();
     } else {
       toast('⚠ Sheet error: '+result.message);
     }
@@ -828,12 +860,18 @@ async function saveData(){
     toast('Saved locally — check internet connection');
     document.getElementById('drive-dot').className='drive-dot';
   }
-  btn.textContent='Save to Google Sheet';btn.disabled=false;
+  btn.textContent='💾 Save';btn.disabled=false;
 }
 
 // ── BIND ──────────────────────────────────────────────────────────────
 function bindAll(){
   document.querySelectorAll('[data-key]').forEach(el=>{
+    // Lock fields that are already saved
+    if(isLocked(el.dataset.key)){
+      el.classList.add('field-locked');
+      el.disabled=true;
+      return;
+    }
     const save=()=>{const type=el.dataset.type;set(el.dataset.key,type==='check'?el.checked:el.value);if(type==='check')render();};
     el.addEventListener('change',save);
     if(el.tagName!=='SELECT'&&el.type!=='checkbox')el.addEventListener('input',()=>set(el.dataset.key,el.value));
