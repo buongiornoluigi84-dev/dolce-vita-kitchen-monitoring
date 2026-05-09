@@ -2,14 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="DV Kitchen">
-<meta name="theme-color" content="#1e2340">
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Dolce Vita — Kitchen Monitoring</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -769,9 +762,7 @@ function exportData(){const blob=new Blob([JSON.stringify({week:weekKey(),manage
 function lockApp(){document.getElementById('app').classList.remove('visible');document.getElementById('pin-screen').style.display='flex';entered='';for(let i=0;i<4;i++)document.getElementById('d'+i).classList.remove('filled');}
 function connectDrive(){const id=document.getElementById('sheet-id-input').value.trim();sheetId=id||'dv_'+Date.now();localStorage.setItem('dv_sheet_id',sheetId);document.getElementById('drive-modal').style.display='none';updateDriveDot();toast('Google Drive connected ✓');}
 function updateDriveDot(){document.getElementById('drive-dot').className='drive-dot ok';}
-
-
-const SCRIPT_URL='https://script.google.com/macros/s/AKfycbw2ntDlQDovFkdazBtZ6i4WXVl9tsIyQWat8H0v4PdNj9-hxNLJsmaGgCAhloJuDhy5KA/exec';
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbx_D1RCcNR3DQdiaAFEErtJbrighZ5zNNDOTJOK663YjrSSSzcjcFWbPxL5GVmOwi_dwA/exec';
 
 async function saveData(){
   localStorage.setItem('dv_data',JSON.stringify(data));
@@ -779,7 +770,10 @@ async function saveData(){
   btn.textContent='Saving…';btn.disabled=true;
   try {
     const payload={week:weekKey(), manager, data:data[weekKey()]||{}};
-    const resp=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
+    const resp=await fetch(SCRIPT_URL,{
+      method:'POST',
+      body:JSON.stringify(payload)
+    });
     const result=await resp.json();
     if(result.status==='ok'){
       document.getElementById('drive-dot').className='drive-dot ok';
@@ -788,7 +782,7 @@ async function saveData(){
       toast('⚠ Sheet error: '+result.message);
     }
   } catch(err){
-    toast('Saved locally — check connection');
+    toast('Saved locally — check internet connection');
     document.getElementById('drive-dot').className='drive-dot';
   }
   btn.textContent='Save to Google Sheet';btn.disabled=false;
