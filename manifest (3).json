@@ -1,0 +1,23 @@
+{
+  "name": "Diligence — Dolce Vita Kitchen",
+  "short_name": "DV Kitchen",
+  "description": "Kitchen monitoring app for Dolce Vita Craft & Kitchen",
+  "start_url": "/dolce-vita-kitchen-monitoring/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e2340",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon_192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon_512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

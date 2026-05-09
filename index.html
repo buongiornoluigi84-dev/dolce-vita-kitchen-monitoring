@@ -2,7 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DV Kitchen">
+<meta name="theme-color" content="#1e2340">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.png">
 <title>Dolce Vita — Kitchen Monitoring</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -762,30 +769,23 @@ function exportData(){const blob=new Blob([JSON.stringify({week:weekKey(),manage
 function lockApp(){document.getElementById('app').classList.remove('visible');document.getElementById('pin-screen').style.display='flex';entered='';for(let i=0;i<4;i++)document.getElementById('d'+i).classList.remove('filled');}
 function connectDrive(){const id=document.getElementById('sheet-id-input').value.trim();sheetId=id||'dv_'+Date.now();localStorage.setItem('dv_sheet_id',sheetId);document.getElementById('drive-modal').style.display='none';updateDriveDot();toast('Google Drive connected ✓');}
 function updateDriveDot(){document.getElementById('drive-dot').className='drive-dot ok';}
-const SCRIPT_URL='https://script.google.com/macros/s/AKfycbwoQYYLbQJ-ZELLsR_mgTBJO9rSGqz-J9Tm2_M7fZXS_s-4VjObL6DQLmkG2ZWAIAPoxA/exec';
 
-async function saveData(){
+
+function saveData(){
   localStorage.setItem('dv_data',JSON.stringify(data));
   const btn=document.getElementById('save-btn');
   btn.textContent='Saving…';btn.disabled=true;
-  try {
-    const payload={week:weekKey(), manager, data:data[weekKey()]||{}};
-    const resp=await fetch(SCRIPT_URL,{
-      method:'POST',
-      body:JSON.stringify(payload)
-    });
-    const result=await resp.json();
-    if(result.status==='ok'){
+  google.script.run
+    .withSuccessHandler(function(){
+      btn.textContent='Save to Google Sheet';btn.disabled=false;
       document.getElementById('drive-dot').className='drive-dot ok';
       toast('✓ Saved to Google Sheet — '+weekKey());
-    } else {
-      toast('⚠ Sheet error: '+result.message);
-    }
-  } catch(err){
-    toast('Saved locally — check internet connection');
-    document.getElementById('drive-dot').className='drive-dot';
-  }
-  btn.textContent='Save to Google Sheet';btn.disabled=false;
+    })
+    .withFailureHandler(function(e){
+      btn.textContent='Save to Google Sheet';btn.disabled=false;
+      toast('⚠ Error: '+e.message);
+    })
+    .saveWeekData(weekKey(), manager, JSON.stringify(data[weekKey()]||{}));
 }
 
 // ── BIND ──────────────────────────────────────────────────────────────
@@ -857,6 +857,11 @@ function bindAll(){
       names[idx]=el.value;set('cook_names_'+day,names);
     });
   });
+}
+</script>
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(function(){});
 }
 </script>
 </body>
